@@ -1,10 +1,9 @@
 import configparser as cp
 import time
 from datetime import datetime
-
+import os
 import requests
 import tqdm
-
 import json
 
 config = cp.ConfigParser()
@@ -16,6 +15,8 @@ vk_access_token = config['VK']['access_token']
 ya_api_url = config['YANDEX']['url']
 ya_access_token = config['YANDEX']['access_token']
 
+if not os.path.exists('json'):
+    os.mkdir('json')
 
 class VkUser:
     def __init__(self, input):
@@ -97,6 +98,8 @@ class YaUploader:
 
 if __name__ == '__main__':
     user_input = str(input('Введите id или screen_name пользователя: '))
+    if not os.path.exists(f'json/{user_input}'):
+        os.mkdir(f'json/{user_input}')
     print(f'''У пользователя {user_input} 
 {VkUser(user_input).get_photos()["response"]["count"]} фотографий''')
     photos_count = int(input('Сколько фотографий загрузить? '))
@@ -106,12 +109,13 @@ if __name__ == '__main__':
         photos_links = VkUser(user_input).get_photos_links()
         folder_name = input('Введите название папки: ')
         if YaUploader(ya_access_token).create_folder(folder_name).get('error'):
-            print('Папка уже существует')
+            print('Ошибка:', YaUploader(ya_access_token).create_folder(folder_name).get('message'))
         else:
             print('Папка создана')
-        start_time = time.time()
-        for photo in tqdm.tqdm(photos_links[:photos_count]):
-            YaUploader(ya_access_token).upload(folder_name, photo[0], photo[1])
-            # create user id folder
-            with open(f'json/{photo[0]}.json', 'a', encoding='utf-8') as f:
-                json.dump([{'file_name': photo[0], 'size': photo[2]}], f, ensure_ascii=False, indent=4)
+            if not os.path.exists(f'json/{user_input}/{folder_name}'):
+                os.mkdir(f'json/{user_input}/{folder_name}')
+            start_time = time.time()
+            for photo in tqdm.tqdm(photos_links[:photos_count]):
+                YaUploader(ya_access_token).upload(folder_name, photo[0], photo[1])
+                with open(f'json/{user_input}/{folder_name}/{photo[0]}.json', 'a', encoding='utf-8') as f:
+                    json.dump([{'file_name': photo[0], 'size': photo[2]}], f, ensure_ascii=False, indent=4)
